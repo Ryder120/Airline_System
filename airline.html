@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airline Reservation System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            margin: 50px;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            margin: auto;
+        }
+        select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #result {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Airline Reservation System</h2>
+        <label for="source">Select Source:</label>
+        <select id="source">
+            <option value="New York">New York</option>
+            <option value="Los Angeles">Los Angeles</option>
+            <option value="Chicago">Chicago</option>
+            <option value="Dallas">Dallas</option>
+            <option value="Miami">Miami</option>
+        </select>
+
+        <label for="destination">Select Destination:</label>
+        <select id="destination">
+            <option value="New York">New York</option>
+            <option value="Los Angeles">Los Angeles</option>
+            <option value="Chicago">Chicago</option>
+            <option value="Dallas">Dallas</option>
+            <option value="Miami">Miami</option>
+        </select>
+
+        <button id="findFlight">Find Flights</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        class Graph {
+            constructor() {
+                this.nodes = new Map();
+            }
+
+            addNode(city) {
+                if (!this.nodes.has(city)) {
+                    this.nodes.set(city, new Map());
+                }
+            }
+
+            addEdge(source, destination, cost) {
+                this.nodes.get(source).set(destination, cost);
+                this.nodes.get(destination).set(source, cost); // Assuming bidirectional flights
+            }
+
+            getAllFlights(start, end) {
+                let paths = [];
+                let visited = new Set();
+                
+                const dfs = (node, path, cost) => {
+                    if (node === end) {
+                        paths.push({ path: [...path, node], cost });
+                        return;
+                    }
+                    
+                    visited.add(node);
+                    for (let [neighbor, price] of this.nodes.get(node)) {
+                        if (!visited.has(neighbor)) {
+                            dfs(neighbor, [...path, node], cost + price);
+                        }
+                    }
+                    visited.delete(node);
+                };
+                
+                dfs(start, [], 0);
+                paths.sort((a, b) => a.cost - b.cost); // Sort flights by cost
+                return paths;
+            }
+        }
+
+        let airline = new Graph();
+        let cities = ["New York", "Los Angeles", "Chicago", "Dallas", "Miami"];
+        cities.forEach(city => airline.addNode(city));
+
+        airline.addEdge("New York", "Los Angeles", 300);
+        airline.addEdge("New York", "Chicago", 150);
+        airline.addEdge("Chicago", "Los Angeles", 200);
+        airline.addEdge("Chicago", "Dallas", 180);
+        airline.addEdge("Dallas", "Miami", 120);
+        airline.addEdge("Los Angeles", "Miami", 350);
+
+        document.getElementById("findFlight").addEventListener("click", function() {
+            let source = document.getElementById("source").value;
+            let destination = document.getElementById("destination").value;
+            
+            if (source === destination) {
+                alert("Source and Destination cannot be the same");
+                return;
+            }
+            
+            let flights = airline.getAllFlights(source, destination);
+            
+            if (flights.length === 0) {
+                document.getElementById("result").innerHTML = "No available flights";
+                return;
+            }
+            
+            let resultHtml = "<h3>Available Flights:</h3>";
+            resultHtml += `<p><strong>Cheapest Flight:</strong> Cost: $${flights[0].cost} | Route: ${flights[0].path.join(" → ")}</p>`;
+            
+            resultHtml += "<h4>All Available Flights:</h4>";
+            flights.forEach(flight => {
+                resultHtml += `<p>Cost: $${flight.cost} | Route: ${flight.path.join(" → ")}</p>`;
+            });
+            
+            document.getElementById("result").innerHTML = resultHtml;
+        });
+    </script>
+</body>
+</html>
