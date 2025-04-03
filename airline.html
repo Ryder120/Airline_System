@@ -38,6 +38,10 @@
             margin-top: 20px;
             font-weight: bold;
         }
+        .cheapest {
+            color: red;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -45,20 +49,20 @@
         <h2>Airline Reservation System</h2>
         <label for="source">Select Source:</label>
         <select id="source">
-            <option value="New York">New York</option>
-            <option value="Los Angeles">Los Angeles</option>
-            <option value="Chicago">Chicago</option>
-            <option value="Dallas">Dallas</option>
-            <option value="Miami">Miami</option>
+            <option value="Mumbai">Mumbai</option>
+            <option value="Goa">Goa</option>
+            <option value="Delhi">Delhi</option>
+            <option value="Bangalore">Bangalore</option>
+            <option value="Chennai">Chennai</option>
         </select>
 
         <label for="destination">Select Destination:</label>
         <select id="destination">
-            <option value="New York">New York</option>
-            <option value="Los Angeles">Los Angeles</option>
-            <option value="Chicago">Chicago</option>
-            <option value="Dallas">Dallas</option>
-            <option value="Miami">Miami</option>
+            <option value="Mumbai">Mumbai</option>
+            <option value="Goa">Goa</option>
+            <option value="Delhi">Delhi</option>
+            <option value="Bangalore">Bangalore</option>
+            <option value="Chennai">Chennai</option>
         </select>
 
         <button id="findFlight">Find Flights</button>
@@ -73,50 +77,68 @@
 
             addNode(city) {
                 if (!this.nodes.has(city)) {
-                    this.nodes.set(city, new Map());
+                    this.nodes.set(city, []);
                 }
             }
 
-            addEdge(source, destination, cost) {
-                this.nodes.get(source).set(destination, cost);
-                this.nodes.get(destination).set(source, cost); // Assuming bidirectional flights
+            addEdge(source, destination, cost, flightName) {
+                this.nodes.get(source).push({ destination, cost, flightName });
+                this.nodes.get(destination).push({ destination: source, cost, flightName });
             }
 
-            getAllFlights(start, end) {
-                let paths = [];
-                let visited = new Set();
-                
-                const dfs = (node, path, cost) => {
-                    if (node === end) {
-                        paths.push({ path: [...path, node], cost });
-                        return;
-                    }
+            dijkstra(start, end) {
+                let distances = new Map();
+                let previous = new Map();
+                let queue = new Set(this.nodes.keys());
+                let flightDetails = new Map();
+
+                for (let city of queue) {
+                    distances.set(city, Infinity);
+                    previous.set(city, null);
+                }
+                distances.set(start, 0);
+                flightDetails.set(start, null);
+
+                while (queue.size) {
+                    let minCity = [...queue].reduce((a, b) => distances.get(a) < distances.get(b) ? a : b);
+                    queue.delete(minCity);
+
+                    if (minCity === end) break;
                     
-                    visited.add(node);
-                    for (let [neighbor, price] of this.nodes.get(node)) {
-                        if (!visited.has(neighbor)) {
-                            dfs(neighbor, [...path, node], cost + price);
+                    for (let { destination, cost, flightName } of this.nodes.get(minCity)) {
+                        let newDistance = distances.get(minCity) + cost;
+                        if (newDistance < distances.get(destination)) {
+                            distances.set(destination, newDistance);
+                            previous.set(destination, minCity);
+                            flightDetails.set(destination, { flightName, cost });
                         }
                     }
-                    visited.delete(node);
-                };
+                }
+
+                let path = [];
+                let current = end;
+                let flightsUsed = [];
+                while (current) {
+                    path.unshift(current);
+                    if (flightDetails.get(current)) {
+                        flightsUsed.unshift(flightDetails.get(current));
+                    }
+                    current = previous.get(current);
+                }
                 
-                dfs(start, [], 0);
-                paths.sort((a, b) => a.cost - b.cost); // Sort flights by cost
-                return paths;
+                return { path, cost: distances.get(end), flightsUsed };
             }
         }
 
         let airline = new Graph();
-        let cities = ["New York", "Los Angeles", "Chicago", "Dallas", "Miami"];
+        let cities = ["Mumbai", "Goa", "Delhi", "Bangalore", "Chennai"];
         cities.forEach(city => airline.addNode(city));
 
-        airline.addEdge("New York", "Los Angeles", 300);
-        airline.addEdge("New York", "Chicago", 150);
-        airline.addEdge("Chicago", "Los Angeles", 200);
-        airline.addEdge("Chicago", "Dallas", 180);
-        airline.addEdge("Dallas", "Miami", 120);
-        airline.addEdge("Los Angeles", "Miami", 350);
+        airline.addEdge("Mumbai", "Goa", 300, "Flight A");
+        airline.addEdge("Mumbai", "Goa", 250, "Flight B");
+        airline.addEdge("Mumbai", "Delhi", 400, "Flight C");
+        airline.addEdge("Delhi", "Bangalore", 350, "Flight D");
+        airline.addEdge("Bangalore", "Chennai", 200, "Flight E");
 
         document.getElementById("findFlight").addEventListener("click", function() {
             let source = document.getElementById("source").value;
@@ -127,19 +149,16 @@
                 return;
             }
             
-            let flights = airline.getAllFlights(source, destination);
+            let { path, cost, flightsUsed } = airline.dijkstra(source, destination);
             
-            if (flights.length === 0) {
+            if (!path.length || cost === Infinity) {
                 document.getElementById("result").innerHTML = "No available flights";
                 return;
             }
             
-            let resultHtml = "<h3>Available Flights:</h3>";
-            resultHtml += `<p><strong>Cheapest Flight:</strong> Cost: $${flights[0].cost} | Route: ${flights[0].path.join(" → ")}</p>`;
-            
-            resultHtml += "<h4>All Available Flights:</h4>";
-            flights.forEach(flight => {
-                resultHtml += `<p>Cost: $${flight.cost} | Route: ${flight.path.join(" → ")}</p>`;
+            let resultHtml = "<h3>All Available Flights:</h3>";
+            flightsUsed.forEach(flight => {
+                resultHtml += `<p class="${flight.cost === cost ? 'cheapest' : ''}">Flight: ${flight.flightName} | Cost: $${flight.cost}</p>`;
             });
             
             document.getElementById("result").innerHTML = resultHtml;
@@ -147,3 +166,5 @@
     </script>
 </body>
 </html>
+<!-- This code creates a simple airline reservation system using Dijkstra's algorithm to find the cheapest flight path between two cities. The user can select a source and destination city, and the system will display all available flights along with their costs. The cheapest flight is highlighted in red. -->
+<!-- The code uses HTML, CSS, and JavaScript to create a user-friendly interface and implement the graph algorithm. -->
